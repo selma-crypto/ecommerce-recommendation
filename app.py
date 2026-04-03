@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-
+st.write("TEST DEPLOY")
 st.set_page_config(page_title="Agent IA de recommandation e-commerce", layout="wide")
 
 
