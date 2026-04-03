@@ -73,6 +73,7 @@ def recommend_products_with_stats(user_id, user_item_matrix, user_similarity, df
     product_stats = get_product_stats(df)
     result = product_stats[product_stats["product_id"].isin(recommendations)].copy()
     result = result.sort_values(by=["rating_count", "avg_rating"], ascending=[False, False])
+
     return result
 
 
