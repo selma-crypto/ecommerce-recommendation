@@ -129,7 +129,7 @@ with col2:
         else:
             st.dataframe(recommendations, use_container_width=True)
 
-            st.markdown("### Pourquoi ces recommandations ?")
+            st.markdown("#### Pourquoi ces recommandations ?")
             st.write(
                 "Ces produits sont recommandés car des utilisateurs ayant un profil similaire "
                 "les ont bien notés."
