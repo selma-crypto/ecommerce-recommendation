@@ -1,14 +1,9 @@
 import streamlit as st
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from urllib.parse import quote
 
 st.set_page_config(page_title="Agent IA de recommandation e-commerce", layout="wide")
 
-
-# =========================
-# Data loading and cleaning
-# =========================
 
 @st.cache_data
 def load_data():
@@ -18,13 +13,12 @@ def load_data():
     required = {"user_id", "product_id", "rating"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Colonnes obligatoires manquantes dans electronics_filtered.csv : {missing}")
+        raise ValueError(f"Colonnes obligatoires manquantes : {missing}")
 
     df = df.copy()
     df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
     df = df.dropna(subset=["user_id", "product_id", "rating"])
 
-    # Fallbacks si le dataset ne contient pas encore les colonnes enrichies
     if "product_title" not in df.columns:
         if "product_name" in df.columns:
             df["product_title"] = df["product_name"].astype(str)
@@ -37,9 +31,6 @@ def load_data():
         df["price"] = pd.to_numeric(df["price"], errors="coerce")
     else:
         df["price"] = pd.NA
-
-    if "image_url" not in df.columns:
-        df["image_url"] = pd.NA
 
     return df
 
@@ -55,7 +46,6 @@ def build_artifacts(df):
 
     user_similarity = cosine_similarity(user_item_matrix)
 
-    # Catalogue produit enrichi
     product_catalog = (
         df.groupby("product_id", as_index=False)
         .agg(
@@ -63,18 +53,14 @@ def build_artifacts(df):
             avg_rating=("rating", "mean"),
             rating_count=("rating", "count"),
             price=("price", "first"),
-            image_url=("image_url", "first"),
         )
+        .sort_values(["rating_count", "avg_rating"], ascending=[False, False])
     )
 
     return user_item_matrix, user_similarity, product_catalog
 
 
-# =========================
-# Recommendation logic
-# =========================
-
-def recommend_products(user_id, user_item_matrix, user_similarity, top_n=5):
+def recommend_products(user_id, user_item_matrix, user_similarity, top_n=6):
     if user_id not in user_item_matrix.index:
         return []
 
@@ -145,18 +131,14 @@ def agent_filter(query, product_catalog, fallback_df, top_n):
             return fallback_df, "Aucun produit fiable exact trouvé. Retour au moteur collaboratif."
         return result, "Filtre agent IA : produits fiables."
 
-    if "pas cher" in q or "moins cher" in q or "budget" in q:
+    if "budget" in q or "pas cher" in q or "moins cher" in q:
         priced = product_catalog.dropna(subset=["price"]).sort_values(["price", "avg_rating"], ascending=[True, False]).head(top_n)
         if priced.empty:
-            return fallback_df, "Pas de prix disponible dans le dataset. Retour au moteur collaboratif."
+            return fallback_df, "Aucun prix disponible dans le catalogue. Retour au moteur collaboratif."
         return priced, "Filtre agent IA : produits budget."
 
     return fallback_df, "Aucune règle métier détectée. Retour au moteur collaboratif."
 
-
-# =========================
-# Display helpers
-# =========================
 
 def price_to_text(price):
     if pd.isna(price):
@@ -172,15 +154,6 @@ def stars(avg_rating):
     return "★" * full + "☆" * (5 - full)
 
 
-def safe_image_url(row):
-    image_url = row.get("image_url", None)
-    if pd.notna(image_url) and str(image_url).strip():
-        return str(image_url).strip()
-
-    title = str(row.get("product_title", "Produit"))
-    return f"https://via.placeholder.com/300x200.png?text={quote(title[:30])}"
-
-
 def render_product_card(row):
     title = str(row.get("product_title", "Produit"))
     price_text = price_to_text(row.get("price", pd.NA))
@@ -188,66 +161,21 @@ def render_product_card(row):
     rating_count = row.get("rating_count", None)
     product_id = str(row.get("product_id", ""))
 
-    st.markdown(
-        """
-        <style>
-        .product-card {
-            border: 1px solid #e6e6e6;
-            border-radius: 16px;
-            padding: 14px;
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-            height: 100%;
-        }
-        .product-title {
-            font-size: 16px;
-            font-weight: 600;
-            line-height: 1.3;
-            min-height: 42px;
-            margin-bottom: 8px;
-        }
-        .product-meta {
-            color: #555;
-            font-size: 13px;
-            margin-top: 6px;
-        }
-        .product-price {
-            font-size: 22px;
-            font-weight: 700;
-            margin-top: 8px;
-            margin-bottom: 4px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    with st.container(border=False):
-        st.markdown('<div class="product-card">', unsafe_allow_html=True)
-        st.image(safe_image_url(row), use_container_width=True)
-        st.markdown(f'<div class="product-title">{title}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="product-price">{price_text}</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown(f"#### {title}")
+        st.write(price_text)
 
         if pd.notna(avg_rating):
-            st.markdown(
-                f'<div class="product-meta">{stars(avg_rating)} '
-                f'{float(avg_rating):.2f}/5 - {int(rating_count)} avis</div>',
-                unsafe_allow_html=True
-            )
+            st.caption(f"{stars(avg_rating)} {float(avg_rating):.2f}/5 - {int(rating_count)} avis")
         else:
-            st.markdown('<div class="product-meta">Pas de note disponible</div>', unsafe_allow_html=True)
+            st.caption("Pas de note disponible")
 
         st.caption(f"Référence : {product_id}")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-
-# =========================
-# App
-# =========================
 
 def main():
     st.title("Agent IA de recommandation e-commerce")
-    st.caption("UX inspirée des marketplaces pour une démo plus claire et plus professionnelle.")
+    st.caption("Version finale propre pour soutenance.")
 
     df = load_data()
     user_item_matrix, user_similarity, product_catalog = build_artifacts(df)
@@ -295,12 +223,15 @@ def main():
     st.markdown("---")
     st.subheader("Informations projet")
     st.write(
-        "Cette version ajoute une présentation plus proche d'un site e-commerce : "
-        "nom produit, prix, image et cartes visuelles."
+        "Cette version finale met l'accent sur une présentation propre et lisible pour la soutenance."
     )
     st.write(
-        "Si ton dataset ne contient pas encore de vraies colonnes `product_title`, `price` ou `image_url`, "
-        "l'application utilise des valeurs de secours pour garder une UX propre."
+        "Le moteur combine une recommandation collaborative entre utilisateurs et une couche agent IA "
+        "basée sur des règles métier simples en langage naturel."
+    )
+    st.write(
+        "Le catalogue actuel n'est pas encore enrichi avec de vraies images ni de vrais prix pour tous les produits. "
+        "L'application reste néanmoins stable et démonstrative."
     )
 
 
