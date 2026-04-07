@@ -180,9 +180,12 @@ def main():
     df = load_data()
     user_item_matrix, user_similarity, product_catalog = build_artifacts(df)
 
-    st.sidebar.header("Paramètres")
-    user_id = st.sidebar.selectbox("Choisissez un utilisateur", user_item_matrix.index.tolist())
-    top_n = st.sidebar.slider("Nombre de recommandations", min_value=3, max_value=10, value=6)
+    user_id = user_item_matrix.index[0]
+    top_n = 6
+    
+    st.title("Agent IA de recommandation e-commerce")
+    st.caption("Version finale propre pour soutenance.")
+    st.caption("Recommandations personnalisées à partir du profil utilisateur connecté.")
 
     query = st.text_input(
         "Quel type de produit recherchez-vous ?",
