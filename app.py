@@ -118,7 +118,7 @@ def agent_filter(query, product_catalog, fallback_df, top_n):
         result = product_catalog.sort_values(["rating_count", "avg_rating"], ascending=[False, False]).head(top_n)
         return result, "Filtre agent IA : produits populaires."
 
-    if "bien noté" in q or "meilleur" in q:
+    if "bien noté" in q or "mieux noté" in q or "meilleur" in q:
         result = product_catalog.sort_values(["avg_rating", "rating_count"], ascending=[False, False]).head(top_n)
         return result, "Filtre agent IA : produits les mieux notés."
 
@@ -176,16 +176,13 @@ def render_product_card(row):
 def main():
     st.title("Agent IA de recommandation e-commerce")
     st.caption("Version finale propre pour soutenance.")
+    st.caption("Recommandations personnalisées à partir du profil utilisateur connecté.")
 
     df = load_data()
     user_item_matrix, user_similarity, product_catalog = build_artifacts(df)
 
     user_id = user_item_matrix.index[0]
     top_n = 6
-    
-    st.title("Agent IA de recommandation e-commerce")
-    st.caption("Version finale propre pour soutenance.")
-    st.caption("Recommandations personnalisées à partir du profil utilisateur connecté.")
 
     query = st.text_input(
         "Quel type de produit recherchez-vous ?",
@@ -233,8 +230,8 @@ def main():
         "basée sur des règles métier simples en langage naturel."
     )
     st.write(
-        "Le catalogue actuel n'est pas encore enrichi avec de vraies images ni de vrais prix pour tous les produits. "
-        "L'application reste néanmoins stable et démonstrative."
+        "Dans une version production, l'utilisateur serait identifié automatiquement via son compte, "
+        "sans sélecteur manuel de profil."
     )
 
 
